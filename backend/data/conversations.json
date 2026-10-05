@@ -1086,10 +1086,31 @@
         "sender": "assistant",
         "text": "YouTube is a popular video-sharing website where users can watch, upload, and share videos on almost any topic imaginable. Would you like me to open it for you?",
         "createdAt": "2026-10-05T21:14:31.643Z"
+      },
+      {
+        "id": "1e66e038-84cb-4430-b2ff-1b46a15db4be",
+        "sender": "user",
+        "text": "blue film blue",
+        "createdAt": "2026-10-05T21:17:37.988Z"
+      },
+      {
+        "id": "ea8aac72-5a1d-41c3-bee5-9fb7f4f6ad46",
+        "sender": "assistant",
+        "text": "গুগলে \"blue film blue\" লিখে সার্চ করছি।",
+        "createdAt": "2026-10-05T21:17:39.049Z",
+        "command": {
+          "name": "searchWeb",
+          "arguments": {
+            "query": "blue film blue"
+          },
+          "permission": "safe",
+          "status": "executed",
+          "summary": "গুগলে \"blue film blue\" লিখে সার্চ করছি।"
+        }
       }
     ],
     "createdAt": "2026-10-05T18:03:00.020Z",
-    "updatedAt": "2026-10-05T21:14:31.643Z"
+    "updatedAt": "2026-10-05T21:17:39.049Z"
   },
   {
     "id": "c97679c4-897d-477c-a388-c5e14a7ab931",

@@ -1,0 +1,202 @@
+import { BaseAIProvider, type CommandDescriptor } from './provider.interface';
+import type { IntentResult, ProviderChatMessage, ProviderChatResult } from '../../types';
+import { INTENT_SYSTEM_PROMPT } from '../prompts/intent.prompt';
+
+/** Google Gemini generateContent provider with full diagnostics and model resilience. */
+export class GeminiProvider extends BaseAIProvider {
+  readonly id = 'gemini';
+  readonly label = 'Google Gemini';
+
+  private readonly fallbackModels = [
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-pro',
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-flash-latest',
+  ];
+
+  constructor(
+    private readonly apiKey: string,
+    public model: string
+  ) {
+    super();
+  }
+
+  isConfigured(): boolean {
+    return this.apiKey.trim().length > 0;
+  }
+
+  private endpoint(model: string, method: 'generateContent'): string {
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:${method}?key=${encodeURIComponent(this.apiKey)}`;
+  }
+
+  private payload(messages: ProviderChatMessage[]) {
+    const system = messages
+      .filter((m) => m.role === 'system')
+      .map((m) => m.content)
+      .join('\n\n');
+
+    // Group adjacent messages with same role for Gemini API compliance
+    const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+    for (const m of messages) {
+      if (m.role === 'system') continue;
+      const role = m.role === 'assistant' ? 'model' : 'user';
+      const text = m.content.trim();
+      if (!text) continue;
+      if (contents.length > 0 && contents[contents.length - 1].role === role) {
+        contents[contents.length - 1].parts[0].text += `\n${text}`;
+      } else {
+        contents.push({ role, parts: [{ text }] });
+      }
+    }
+
+    return {
+      ...(system ? { system_instruction: { parts: [{ text: system }] } } : {}),
+      contents,
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+    };
+  }
+
+  async chat(messages: ProviderChatMessage[]): Promise<ProviderChatResult> {
+    console.log(`[AI] Request started`);
+    console.log(`[AI] Provider: ${this.label} (${this.model})`);
+
+    const payloadObj = this.payload(messages);
+
+    const modelsToTry = [this.model, ...this.fallbackModels.filter((m) => m !== this.model)];
+    let lastError: Error | null = null;
+
+    for (const currentModel of modelsToTry) {
+      try {
+        const url = this.endpoint(currentModel, 'generateContent');
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+
+        let response: Response;
+        let rawText = '';
+        try {
+          response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payloadObj),
+            signal: controller.signal,
+          });
+          rawText = await response.text();
+        } finally {
+          clearTimeout(timer);
+        }
+
+        console.log(`[AI] Raw response received: ${rawText}`);
+
+        if (!response.ok) {
+          console.error(`[AI ERROR] API request failed`);
+          console.error(`[AI ERROR] Status: ${response.status}`);
+          console.error(`[AI ERROR] Message: ${rawText}`);
+
+          // If model not found or temporarily unavailable, try next candidate
+          if (response.status === 404 || response.status === 503) {
+            console.warn(`[AI] Model ${currentModel} returned ${response.status}. Retrying with next model...`);
+            lastError = new Error(`Gemini API error ${response.status}: ${rawText}`);
+            continue;
+          }
+          throw new Error(`Gemini API error ${response.status}: ${rawText}`);
+        }
+
+        const data = JSON.parse(rawText);
+        const parsedText: string =
+          data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
+
+        console.log(`[AI] Parsed full response: "${parsedText}"`);
+        console.log(`[AI] Response length: ${parsedText.length}`);
+
+        if (!parsedText) {
+          throw new Error('Gemini returned no text candidate');
+        }
+
+        this.model = currentModel;
+        const usage = data?.usageMetadata;
+        return {
+          text: parsedText,
+          model: currentModel,
+          usage: usage
+            ? {
+                promptTokens: usage.promptTokenCount ?? 0,
+                completionTokens: usage.candidatesTokenCount ?? 0,
+                totalTokens: usage.totalTokenCount ?? 0,
+              }
+            : undefined,
+        };
+      } catch (err) {
+        lastError = err as Error;
+        if ((err as Error).message.includes('404') || (err as Error).message.includes('503')) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw lastError || new Error('All Gemini models failed');
+  }
+
+  async detectIntent(input: { text: string; commands: CommandDescriptor[] }): Promise<IntentResult> {
+    const text = input.text.trim();
+    if (!text) return { kind: 'reply', confidence: 1 };
+
+    // Explicit check for normal conversation questions
+    const isNormalChat =
+      /^(কেমন আছো|কেমন আছেন|তুমি কে|তোমার নাম কি|কে বানিয়েছে|কী খবর|কি অবস্থা|কেমন চলছে|একটা গল্প বলো|গল্প বলো|আজকে আমার কি করা উচিত|বাংলাদেশের রাজধানী|বাংলাদেশ সম্পর্কে|আমার ল্যাপটপ slow কেন|আমার ল্যাপটপ স্লো কেন|ল্যাপটপ স্লো|help me|how are you|who are you|tell me a story|what is|why is|explain)\b/i.test(
+        text
+      ) ||
+      /\?$/.test(text) ||
+      /[\u0980-\u09FF]/.test(text) && !/\b(খুলো|খুলে দাও|ওপেন করো|সার্চ করো|নোট|রিমাইন্ডার|কয়টা বাজে|সময় কত)\b/i.test(text);
+
+    if (isNormalChat) {
+      return { kind: 'reply', confidence: 1 };
+    }
+
+    const catalogue = input.commands
+      .map(
+        (c) =>
+          `- ${c.name} (${c.permission}${c.explicitOnly ? ', explicit request only' : ''}): ${c.description}\n` +
+          c.examples.map((e) => `    e.g. "${e}"`).join('\n')
+      )
+      .join('\n');
+
+    try {
+      const data = await this.requestJson(this.endpoint(this.model, 'generateContent'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...this.payload([
+            { role: 'system', content: INTENT_SYSTEM_PROMPT.replace('{{COMMANDS}}', catalogue) },
+            { role: 'user', content: input.text },
+          ]),
+          generationConfig: { temperature: 0, maxOutputTokens: 256, responseMimeType: 'application/json' },
+        }),
+      });
+
+      const raw: string =
+        data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
+      const parsed = this.extractJson(raw) as
+        | { kind?: string; command?: string; arguments?: Record<string, unknown>; confidence?: number }
+        | null;
+
+      if (!parsed || parsed.kind !== 'command' || typeof parsed.command !== 'string') {
+        return { kind: 'reply', confidence: 1 };
+      }
+      return {
+        kind: 'command',
+        command: parsed.command,
+        arguments: typeof parsed.arguments === 'object' && parsed.arguments ? parsed.arguments : {},
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+      };
+    } catch {
+      // If intent classification fails or is unavailable, default to free-form conversation
+      return { kind: 'reply', confidence: 1 };
+    }
+  }
+}

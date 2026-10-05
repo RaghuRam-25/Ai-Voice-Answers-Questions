@@ -1,0 +1,459 @@
+
+--- PAGE 1 ---
+AI Voice Assistant — Web Architecture Guide
+Page 1
+ AI Voice Assistant — Web Architecture &
+ Folder Structure
+A practical blueprint for a laptop-based voice-first AI assistant
+Target stack: Next.js + TypeScript (Frontend) • Node.js + Express + TypeScript (Backend) • MongoDB •
+WebSocket/Socket.IO • Voice/AI APIs
+Important scope: This document designs the Web system only. A separate desktop/mobile application
+can later connect to the same backend.
+1. What You Are Building
+The goal is a voice-first AI assistant for a laptop. The user should not need to click the mouse for normal
+interaction. A wake trigger—such as a wake word, keyboard shortcut, or two-clap sound
+detector—activates the assistant. The assistant opens its web interface, gives a welcome message, then
+asks: “How can I help you?” The user speaks, the system converts speech to text, sends the request to
+the AI/command engine, returns an answer, and optionally performs an allowed computer action.
+ • Idle → listen for a local wake trigger.
+ • Wake detected → show/activate assistant UI.
+ • Welcome → play a short spoken greeting.
+ • Prompt → “How can I help you?”
+ • User voice → speech-to-text.
+ • AI/intent engine → understand question or command.
+ • Response → text + text-to-speech.
+ • Action layer → optionally execute an approved task.
+ • Result → tell the user what happened and return to listening.
+ 
+2. Recommended Technology Stack
+ Layer
+Recommended
+Purpose
+Frontend
+Next.js + TypeScript
+Voice UI, dashboard, chat/history, settings, status
+UI
+Tailwind CSS + component library
+Fast, consistent responsive interface
+Backend
+Node.js + Express + TypeScript
+API, authentication, AI orchestration, permissions
+Realtime
+Socket.IO / WebSocket
+Live assistant state, streaming events, device status
+Database
+MongoDB + Mongoose
+Users, sessions, commands, settings, logs
+Validation
+Zod
+Runtime validation for API inputs
+Auth
+JWT + refresh token / secure cookie
+User authentication
+AI
+Provider API via backend
+Reasoning, tool selection, natural-language response
+STT
+Browser/OS/provider speech recognition
+Voice → text
+TTS
+Browser/OS/provider speech synthesis
+Text → voice
+Security
+Helmet, CORS, rate limit
+Protect API and browser access
+Testing
+Vitest/Jest + Playwright
+Unit and end-to-end testing
+3. Key Architecture Decision
+
+
+--- PAGE 2 ---
+AI Voice Assistant — Web Architecture Guide
+Page 2
+Keep the frontend and backend physically separated. Do not put backend code inside the Next.js
+frontend directory. This makes deployment, debugging, security, and future desktop/mobile clients much
+easier.
+Recommended root:
+ ai-voice-assistant/
+■■■ frontend/          # ONLY Next.js + TypeScript web UI
+■■■ backend/           # ONLY Node.js + Express + TypeScript API
+■■■ docs/              # architecture, API notes, diagrams
+■■■ .gitignore
+■■■ README.md
+■■■ package.json       # optional root scripts only
+4. Complete Frontend Folder Structure
+ frontend/
+■■■ public/
+■   ■■■ icons/
+■   ■■■ sounds/
+■   ■■■ images/
+■
+■■■ src/
+■   ■■■ app/
+■   ■   ■■■ layout.tsx
+■   ■   ■■■ page.tsx
+■   ■   ■■■ globals.css
+■   ■   ■
+■   ■   ■■■ assistant/
+■   ■   ■   ■■■ page.tsx
+■   ■   ■
+■   ■   ■■■ history/
+■   ■   ■   ■■■ page.tsx
+■   ■   ■
+■   ■   ■■■ settings/
+■   ■   ■   ■■■ page.tsx
+■   ■   ■
+■   ■   ■■■ login/
+■   ■       ■■■ page.tsx
+■   ■
+■   ■■■ components/
+■   ■   ■■■ assistant/
+■   ■   ■   ■■■ AssistantOrb.tsx
+■   ■   ■   ■■■ VoiceVisualizer.tsx
+■   ■   ■   ■■■ ConversationView.tsx
+■   ■   ■   ■■■ MicButton.tsx
+■   ■   ■   ■■■ AssistantStatus.tsx
+■   ■   ■■■ layout/
+■   ■   ■■■ settings/
+■   ■   ■■■ common/
+■   ■
+■   ■■■ hooks/
+■   ■   ■■■ useSpeechRecognition.ts
+■   ■   ■■■ useSpeechSynthesis.ts
+■   ■   ■■■ useWakeState.ts
+■   ■   ■■■ useSocket.ts
+■   ■
+■   ■■■ lib/
+■   ■   ■■■ api.ts
+■   ■   ■■■ socket.ts
+■   ■   ■■■ constants.ts
+■   ■
+■   ■■■ services/
+■   ■   ■■■ assistant.service.ts
+■   ■   ■■■ voice.service.ts
+■   ■   ■■■ auth.service.ts
+■   ■
+■   ■■■ store/
+■   ■   ■■■ assistant.store.ts
+■   ■
+■   ■■■ types/
+■   ■   ■■■ assistant.ts
+■   ■   ■■■ auth.ts
+■   ■   ■■■ api.ts
+■   ■
+■   ■■■ utils/
+■       ■■■ format.ts
+■
+
+
+--- PAGE 3 ---
+AI Voice Assistant — Web Architecture Guide
+Page 3
+■■■ .env.local
+■■■ next.config.ts
+■■■ tsconfig.json
+■■■ package.json
+■■■ README.md
+5. Complete Backend Folder Structure
+ backend/
+■■■ src/
+■   ■■■ server.ts
+■   ■■■ app.ts
+■   ■
+■   ■■■ config/
+■   ■   ■■■ env.ts
+■   ■   ■■■ db.ts
+■   ■   ■■■ cors.ts
+■   ■
+■   ■■■ routes/
+■   ■   ■■■ auth.routes.ts
+■   ■   ■■■ assistant.routes.ts
+■   ■   ■■■ conversation.routes.ts
+■   ■   ■■■ settings.routes.ts
+■   ■   ■■■ health.routes.ts
+■   ■
+■   ■■■ controllers/
+■   ■   ■■■ auth.controller.ts
+■   ■   ■■■ assistant.controller.ts
+■   ■   ■■■ conversation.controller.ts
+■   ■   ■■■ settings.controller.ts
+■   ■
+■   ■■■ services/
+■   ■   ■■■ ai.service.ts
+■   ■   ■■■ assistant.service.ts
+■   ■   ■■■ command.service.ts
+■   ■   ■■■ speech.service.ts
+■   ■   ■■■ conversation.service.ts
+■   ■
+■   ■■■ ai/
+■   ■   ■■■ prompts/
+■   ■   ■   ■■■ system.prompt.ts
+■   ■   ■   ■■■ command.prompt.ts
+■   ■   ■■■ tools/
+■   ■   ■   ■■■ tool.registry.ts
+■   ■   ■   ■■■ safe.tools.ts
+■   ■   ■■■ providers/
+■   ■       ■■■ ai.provider.ts
+■   ■
+■   ■■■ models/
+■   ■   ■■■ User.ts
+■   ■   ■■■ Conversation.ts
+■   ■   ■■■ CommandLog.ts
+■   ■   ■■■ UserSettings.ts
+■   ■
+■   ■■■ middleware/
+■   ■   ■■■ auth.middleware.ts
+■   ■   ■■■ error.middleware.ts
+■   ■   ■■■ rateLimit.middleware.ts
+■   ■   ■■■ validate.middleware.ts
+■   ■
+■   ■■■ socket/
+■   ■   ■■■ socket.ts
+■   ■   ■■■ assistant.socket.ts
+■   ■
+■   ■■■ validators/
+■   ■   ■■■ auth.schema.ts
+■   ■   ■■■ assistant.schema.ts
+■   ■   ■■■ settings.schema.ts
+■   ■
+■   ■■■ utils/
+■   ■   ■■■ logger.ts
+■   ■   ■■■ errors.ts
+■   ■
+■   ■■■ types/
+■       ■■■ index.ts
+■
+■■■ .env
+■■■ tsconfig.json
+■■■ package.json
+
+
+--- PAGE 4 ---
+AI Voice Assistant — Web Architecture Guide
+Page 4
+■■■ README.md
+
+
+--- PAGE 5 ---
+AI Voice Assistant — Web Architecture Guide
+Page 5
+6. What Each Major Backend Part Does
+routes/ — Only defines URL endpoints and connects them to controllers. Keep business logic out of
+routes.
+controllers/ — Receives HTTP requests, validates/reads data, calls services, and sends responses.
+services/ — Contains actual application logic: AI requests, conversation handling, command
+interpretation, and database workflows.
+ai/ — Keeps prompts, tool definitions, and AI-provider integration isolated so the AI provider can be
+changed later.
+models/ — MongoDB/Mongoose schemas and database models.
+middleware/ — Authentication, validation, rate limiting, error handling, and security checks.
+socket/ — Realtime communication between the web UI and backend.
+validators/ — Zod schemas for safe, predictable request data.
+7. Core Voice Interaction Flow
+ [Laptop is idle]
+      |
+      v
+[Wake detector]
+  | wake word / shortcut / optional clap detector
+      |
+      v
+[Assistant activated]
+      |
+      v
+[Frontend shows Assistant UI]
+      |
+      v
+[TTS: "Welcome. How can I help you?"]
+      |
+      v
+[Microphone listens]
+      |
+      v
+[Speech-to-Text]
+      |
+      v
+POST /api/assistant/message
+      |
+      v
+[Backend validates request]
+      |
+      v
+[AI + intent/tool engine]
+      |
+      +---- question --> [Generate answer]
+      |
+      +---- action ----> [Safety check] --> [Approved tool]
+      |
+      v
+[Response]
+      |
+      +--> frontend text
+      +--> TTS voice
+      |
+      v
+[Ready for next command]
+8. Important Reality: Web App vs Desktop Control
+A normal browser web app cannot freely control the whole laptop, launch arbitrary desktop programs,
+run shell commands, or access protected OS features. Browser security intentionally prevents this.
+Therefore, the web frontend should be the interface, while real laptop control should later be handled by
+a small trusted desktop/host application.
+
+
+--- PAGE 6 ---
+AI Voice Assistant — Web Architecture Guide
+Page 6
+Recommended architecture: Next.js Web UI ⇄ Express backend ⇄ Desktop Host/Agent ⇄ Windows OS
+The desktop host can be built later as a separate application. It should authenticate to the backend and
+expose only explicitly allowed operations. This preserves your requested frontend/backend separation.
+9. Wake Trigger Strategy
+ • Phase 1 — easiest: global keyboard shortcut or a visible web button. Use this while building the AI core.
+ • Phase 2 — wake word: use an OS/desktop-level listener or a supported wake-word engine. Keep
+ continuous listening outside the browser when necessary.
+• Phase 3 — two-clap trigger: a desktop microphone listener detects two short peaks within a defined
+ time window, then activates the assistant. Add noise filtering and a cooldown to reduce false triggers.
+• Important: the clap detector should not directly execute dangerous commands. It should only wake the
+ assistant.
+10. API Design
+ Method
+Endpoint
+Purpose
+GET
+/api/health
+Backend health check
+POST
+/api/auth/login
+Login
+POST
+/api/auth/logout
+Logout
+GET
+/api/assistant/status
+Current assistant state
+POST
+/api/assistant/message
+Send text/voice-transcribed command
+GET
+/api/conversations
+Conversation history
+GET
+/api/conversations/:id
+Single conversation
+GET
+/api/settings
+Read assistant settings
+PATCH
+/api/settings
+Update settings
+11. MongoDB Collections
+ • users — account, authentication metadata, profile.
+ • conversations — conversation/session records and messages.
+ • commandlogs — requested actions, result, timestamp, safety status.
+ • usersettings — voice, wake trigger, language, TTS/STT preferences.
+ • devices — optional later collection for registered desktop hosts.
+ 
+12. Environment Variables
+ frontend/.env.local
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
+backend/.env
+PORT=5000
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_long_random_secret
+CLIENT_URL=http://localhost:3000
+AI_API_KEY=your_provider_key
+Never expose private API keys such as the AI provider key in Next.js client-side code. Private keys belong
+in the backend environment.
+
+
+--- PAGE 7 ---
+AI Voice Assistant — Web Architecture Guide
+Page 7
+13. Recommended Build Order
+Step 1: Create root project with separate frontend and backend folders.
+Step 2: Create Next.js + TypeScript frontend.
+Step 3: Create Node + Express + TypeScript backend.
+Step 4: Connect MongoDB and create User/Conversation/Settings models.
+Step 5: Build the assistant screen: orb/status, transcript, response, microphone state.
+Step 6: Add text-only assistant first. Verify API → AI → response before adding voice.
+Step 7: Add speech-to-text and text-to-speech.
+Step 8: Add Socket.IO for realtime assistant status and streaming events.
+Step 9: Add authentication and conversation history.
+Step 10: Create a safe command/tool registry. Do not allow arbitrary shell execution.
+Step 11: Build the separate desktop host/agent for real OS-level actions.
+Step 12: Add wake word/clap detection at desktop level.
+Step 13: Add permissions, confirmation for risky actions, logs, rate limits.
+Step 14: Test locally, then deploy frontend and backend separately.
+14. Safety Model for Computer Control
+Do not design the AI as “AI can run any command.” Instead, define a small tool registry. Example: open
+application, open URL, search web, create note, read a selected file, control media. Each tool should have
+a schema, permission level, validation, timeout, and audit log.
+ User: "Open VS Code"
+       ↓
+AI identifies tool: openApplication
+       ↓
+Validate { app: "vscode" }
+       ↓
+Permission check
+       ↓
+Desktop host executes approved operation
+       ↓
+Return success/failure
+       ↓
+AI speaks result
+For destructive or sensitive actions—delete files, send messages, make purchases, change security
+settings—require explicit confirmation.
+15. Frontend Pages
+ • / — landing/status screen; can automatically redirect to assistant.
+ • /assistant — main voice assistant interface.
+ • /history — previous conversations and commands.
+ • /settings — voice, language, wake trigger, privacy, device settings.
+ • /login — authentication.
+ 
+16. Development Rules
+ • Keep all frontend code inside frontend/ and all backend code inside backend/.
+ • Never put MongoDB credentials or AI private keys in frontend code.
+ 
+
+--- PAGE 8 ---
+AI Voice Assistant — Web Architecture Guide
+Page 8
+• Keep AI provider code behind ai/providers/ so the provider can be replaced later.
+ • Keep OS-level control out of the browser; use a separate desktop host.
+ • Start with text commands before implementing wake-word/clap automation.
+ • Use TypeScript on both frontend and backend for one consistent language.
+ • Use environment variables for secrets and deployment-specific URLs.
+ • Log important command executions without storing unnecessary sensitive voice data.
+ 
+17. Final Architecture
+                     ■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+                    ■       Next.js Web UI      ■
+                    ■      TypeScript + React   ■
+                    ■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+                                 ■ HTTPS / Socket.IO
+                                 ▼
+                    ■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+                    ■   Node + Express API     ■
+                    ■       TypeScript         ■
+                    ■■■■■■■■■■■■■■■■■■■■■■■■■■■■
+                            ■         ■
+                 ■■■■■■■■■■■▼■■■■   ■■▼■■■■■■■■■■■■■■■■■
+                 ■   MongoDB     ■   ■ AI / Tool Engine ■
+                 ■ users, logs,  ■   ■ prompts + tools  ■
+                 ■ conversations ■   ■■■■■■■■■■■■■■■■■■■■
+                 ■■■■■■■■■■■■■■■■            ■
+                                             ▼
+                                  ■■■■■■■■■■■■■■■■■■■■■■
+                                  ■ Desktop Host Agent ■
+                                  ■  OS-level actions  ■
+                                  ■■■■■■■■■■■■■■■■■■■■■■
+                                            ▼
+                                      Windows / Laptop
+18. Bottom Line
+Yes—your chosen stack is suitable. You do not need Python for the main web application. Build the web
+system with Next.js + TypeScript on the frontend and Node.js + Express + TypeScript + MongoDB on the
+backend. The only important addition is a separate desktop host/agent later if you want genuine
+laptop-level control, wake-word/clap listening while the browser is closed, or launching desktop
+applications.
+Recommended first milestone: Get “text → AI → answer” working in the separated frontend/backend
+structure. Then add voice. Then add safe computer-control tools. Finally add always-on wake detection.

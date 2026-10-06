@@ -9,6 +9,8 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(5000),
   CLIENT_URL: z.string().default('http://localhost:3000'),
+  FRONTEND_URL: z.string().optional(),
+  CORS_ALLOWED_ORIGINS: z.string().optional(),
 
   // AI provider
   AI_PROVIDER: z.enum(['openai', 'gemini', 'custom', 'local']).default('local'),
@@ -16,7 +18,7 @@ const schema = z.object({
   OPENAI_BASE_URL: z.string().default('https://api.openai.com/v1'),
   OPENAI_MODEL: z.string().default('gpt-4o-mini'),
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().default('gemini-3.5-flash-lite'),
+  GEMINI_MODEL: z.string().default('gemini-flash-lite-latest'),
   CUSTOM_API_KEY: z.string().optional(),
   CUSTOM_BASE_URL: z.string().optional(),
   CUSTOM_MODEL: z.string().optional(),
@@ -75,14 +77,25 @@ if (!providerUsable) {
   );
 }
 
+// Combine all possible origin sources: FRONTEND_URL, CLIENT_URL, CORS_ALLOWED_ORIGINS
+const rawOrigins = [
+  raw.FRONTEND_URL,
+  raw.CLIENT_URL,
+  raw.CORS_ALLOWED_ORIGINS,
+]
+  .filter(Boolean)
+  .flatMap((str) => (str as string).split(','))
+  .map((s) => s.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+const uniqueOrigins = Array.from(new Set(rawOrigins.length > 0 ? rawOrigins : ['http://localhost:3000']));
+
 export const env = {
   ...raw,
   AI_PROVIDER: activeProvider,
   AI_PROVIDER_REQUESTED: requestedProvider,
   AI_PROVIDER_FALLBACK: !providerUsable,
-  CLIENT_URLS: raw.CLIENT_URL.split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
+  CLIENT_URLS: uniqueOrigins,
   isDev: raw.NODE_ENV !== 'production',
   isProd: raw.NODE_ENV === 'production',
   dataDir: path.resolve(__dirname, '../../', raw.DATA_DIR),

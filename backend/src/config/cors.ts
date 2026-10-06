@@ -1,17 +1,21 @@
 import cors from 'cors';
 import { env } from './env';
 import { corsOrigin } from '../middleware/session.middleware';
+import { logger } from '../utils/logger';
 
 export const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    if (corsOrigin(origin ?? undefined)) {
+    const isAllowed = corsOrigin(origin ?? undefined);
+    if (isAllowed) {
       callback(null, true);
-      return;
+    } else {
+      logger.warn(`[CORS] Blocked request from unauthorized origin: "${origin}". Allowed origins: ${env.CLIENT_URLS.join(', ')}`);
+      callback(null, false);
     }
-    callback(new Error(`Origin ${origin} is not allowed`));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'X-Session-Id'],
-  maxAge: 600,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'X-Session-Id', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['X-Session-Id'],
+  maxAge: 86400,
 };

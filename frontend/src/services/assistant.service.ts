@@ -9,8 +9,9 @@ export const assistantService = {
       language,
     });
 
-    if (!response.data.data) {
-      throw new Error('Assistant did not return a response.');
+    if (!response.data.success || !response.data.data) {
+      const errMsg = response.data.error || 'Assistant did not return a response.';
+      throw new Error(errMsg);
     }
 
     return response.data.data;
@@ -18,8 +19,9 @@ export const assistantService = {
 
   async getStatus(): Promise<AssistantSystemStatus> {
     const response = await apiClient.get<ApiResponse<AssistantSystemStatus>>('/assistant/status');
-    if (!response.data.data) {
-      throw new Error('Assistant status is unavailable.');
+    if (!response.data.success || !response.data.data) {
+      const errMsg = response.data.error || 'Assistant status is unavailable.';
+      throw new Error(errMsg);
     }
     return response.data.data;
   },

@@ -8,14 +8,12 @@ export class GeminiProvider extends BaseAIProvider {
   readonly label = 'Google Gemini';
 
   private readonly fallbackModels = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash',
-    'gemini-2.5-flash-lite',
-    'gemini-2.0-flash-lite',
-    'gemini-1.5-pro',
-    'gemini-3.5-flash-lite',
+    'gemini-flash-lite-latest',
     'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-3.7-flash',
+    'gemini-3.8-flash',
+    'gemini-3.1-flash-lite',
     'gemini-flash-latest',
   ];
 
@@ -62,7 +60,7 @@ export class GeminiProvider extends BaseAIProvider {
   }
 
   async chat(messages: ProviderChatMessage[]): Promise<ProviderChatResult> {
-    console.log(`[AI] Request started`);
+    console.log(`[PROD] AI request started`);
     console.log(`[AI] Provider: ${this.label} (${this.model})`);
 
     const payloadObj = this.payload(messages);
@@ -90,27 +88,19 @@ export class GeminiProvider extends BaseAIProvider {
           clearTimeout(timer);
         }
 
-        console.log(`[AI] Raw response received: ${rawText}`);
-
         if (!response.ok) {
-          console.error(`[AI ERROR] API request failed`);
-          console.error(`[AI ERROR] Status: ${response.status}`);
-          console.error(`[AI ERROR] Message: ${rawText}`);
-
-          // If model not found or temporarily unavailable, try next candidate
-          if (response.status === 404 || response.status === 503) {
-            console.warn(`[AI] Model ${currentModel} returned ${response.status}. Retrying with next model...`);
-            lastError = new Error(`Gemini API error ${response.status}: ${rawText}`);
-            continue;
-          }
-          throw new Error(`Gemini API error ${response.status}: ${rawText}`);
+          console.warn(`[AI] Model ${currentModel} returned HTTP ${response.status}. Retrying with next model...`);
+          lastError = new Error(`Gemini API error ${response.status}: ${rawText}`);
+          continue;
         }
+
+        console.log(`[PROD] AI provider response received`);
 
         const data = JSON.parse(rawText);
         const parsedText: string =
           data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '';
 
-        console.log(`[AI] Parsed full response: "${parsedText}"`);
+        console.log(`[PROD] AI response text: "${parsedText.slice(0, 100)}${parsedText.length > 100 ? '...' : ''}"`);
         console.log(`[AI] Response length: ${parsedText.length}`);
 
         if (!parsedText) {
@@ -132,10 +122,8 @@ export class GeminiProvider extends BaseAIProvider {
         };
       } catch (err) {
         lastError = err as Error;
-        if ((err as Error).message.includes('404') || (err as Error).message.includes('503')) {
-          continue;
-        }
-        throw err;
+        console.warn(`[AI] Error with model ${currentModel}: ${(err as Error).message}. Retrying...`);
+        continue;
       }
     }
 

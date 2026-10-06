@@ -2,7 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { env } from '../config/env';
 import { logger } from '../utils/logger';
-import { normaliseSessionId } from '../middleware/session.middleware';
+import { normaliseSessionId, corsOrigin } from '../middleware/session.middleware';
 import type { ClientToServerEvents, ServerToClientEvents } from '../types';
 import { setupAssistantSocket } from './assistant.socket';
 
@@ -11,14 +11,20 @@ let io: Server<ClientToServerEvents, ServerToClientEvents> | null = null;
 export const initializeSocket = (httpServer: HttpServer): Server<ClientToServerEvents, ServerToClientEvents> => {
   io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
     cors: {
-      origin: env.CLIENT_URLS,
+      origin: (origin, callback) => {
+        if (corsOrigin(origin ?? undefined)) {
+          callback(null, true);
+        } else {
+          callback(null, false);
+        }
+      },
       methods: ['GET', 'POST'],
       credentials: true,
     },
     // Start on polling so restrictive networks still connect, then upgrade.
     transports: ['polling', 'websocket'],
     maxHttpBufferSize: 1e5,
-    pingTimeout: 20_000,
+    pingTimeout: 30_000,
   });
 
   io.on('connection', (socket) => {

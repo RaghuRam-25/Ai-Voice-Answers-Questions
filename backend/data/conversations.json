@@ -1144,5 +1144,38 @@
     ],
     "createdAt": "2026-10-05T19:34:29.149Z",
     "updatedAt": "2026-10-05T19:34:31.578Z"
+  },
+  {
+    "id": "095952b7-4a77-4f3f-a9fd-2644ef8294ee",
+    "sessionId": "anon-5b113a65",
+    "title": "Hello",
+    "messages": [
+      {
+        "id": "9cb60aaa-9c8f-4b36-961f-b48270b95c17",
+        "sender": "user",
+        "text": "Hello",
+        "createdAt": "2026-10-06T05:44:44.116Z"
+      },
+      {
+        "id": "6063b357-dff6-4059-b632-81e932480dae",
+        "sender": "assistant",
+        "text": "Hello! How can I help you today?",
+        "createdAt": "2026-10-06T05:44:47.220Z"
+      },
+      {
+        "id": "7eb6bca6-abf7-4b55-a7be-d96944291176",
+        "sender": "user",
+        "text": "What is Facebook?",
+        "createdAt": "2026-10-06T05:44:47.236Z"
+      },
+      {
+        "id": "797be1c8-71e2-412b-a1e8-8e49217c72e4",
+        "sender": "assistant",
+        "text": "Facebook is a social media platform that allows people to connect with friends and family, share photos and videos, join groups, and communicate through messages. Is there anything specific you would like to know about it?",
+        "createdAt": "2026-10-06T05:44:48.643Z"
+      }
+    ],
+    "createdAt": "2026-10-06T05:44:44.115Z",
+    "updatedAt": "2026-10-06T05:44:48.643Z"
   }
 ]

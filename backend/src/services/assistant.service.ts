@@ -268,8 +268,8 @@ class AssistantService {
       messages.splice(1, 1);
     }
 
+    console.log(`[PROD] AI request started`);
     console.log(`[AI] Provider: ${providerCatalogue.active.label} (${providerCatalogue.active.model})`);
-    console.log(`[AI] Request started`);
 
     const result = await provider.chat(messages);
     const trimmedResult = (result.text || '').trim();
@@ -282,8 +282,8 @@ class AssistantService {
       return language === 'bn' ? 'আমি আপনার কথা বুঝতে পেরেছি।' : 'I understood what you said.';
     }
 
-    console.log(`[AI] Response received`);
-    console.log(`[AI] Response text: "${trimmedResult}"`);
+    console.log(`[PROD] AI provider response received`);
+    console.log(`[PROD] AI response text: "${trimmedResult.slice(0, 100)}${trimmedResult.length > 100 ? '...' : ''}"`);
     console.log(`[AI] Response length: ${trimmedResult.length}`);
 
     return trimmedResult;

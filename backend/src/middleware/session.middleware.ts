@@ -68,6 +68,29 @@ export const securityHeaders = (_req: Request, res: Response, next: NextFunction
 };
 
 export const corsOrigin = (origin: string | undefined): boolean => {
-  if (!origin) return true; // same-origin / native clients
-  return env.CLIENT_URLS.includes(origin);
+  if (!origin) return true; // same-origin / native clients / server-to-server / curl
+
+  const normalizedOrigin = origin.trim().replace(/\/+$/, '');
+
+  // Exact match with any configured origin
+  for (const clientUrl of env.CLIENT_URLS) {
+    const normalizedClient = clientUrl.trim().replace(/\/+$/, '');
+    if (normalizedClient === '*' || normalizedClient === normalizedOrigin) {
+      return true;
+    }
+    // Support wildcard subdomain patterns like https://*.vercel.app
+    if (normalizedClient.includes('*')) {
+      const pattern = new RegExp('^' + normalizedClient.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$', 'i');
+      if (pattern.test(normalizedOrigin)) {
+        return true;
+      }
+    }
+  }
+
+  // Development convenience
+  if (env.isDev && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalizedOrigin)) {
+    return true;
+  }
+
+  return false;
 };
